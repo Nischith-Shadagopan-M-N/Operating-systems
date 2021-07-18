@@ -1,0 +1,29 @@
+Problem 1
+1. Context saving is similar to what is saved while switching processes. ra, sp and s0-s11 are saved. These are the callee saved registers along with ra. We need to save ra also as we need to know where to return. Others caller saved so we don’t need to save.
+2. 
+uthread.c:
+First I declared struct context and added it to struct thread. Added a call to thread_switch() in thread_schedule to switch context. Added code to initialize ra and sp in thread_create for the first thread by modifying its context.
+uthread_switch.s:
+Added code to save old context into memory and load new context into registers from memory.
+3. No, the user-level thread is associated with the process. The kernel doesn't know about the user-level threads which are created by users. The kernel only sees the process so once the process gone so does the threads.
+
+Problem 2
+1. Different operations:
+    pthread_mutex_lock(&lock);
+    pthread_mutex_unlock(&lock);
+    pthread_mutex_init(&lock, NULL); 
+2. If 2 or more threads are running simultaneously then 2 threads might call insert with keys in the same bucket which gives rise to a race condition. For example, suppose two threads A and B call insert simultaneously with key 7 and 12 respectively. Whichever one finishes last, will end up modifying the head of the list and the other one's key is lost.
+3. To avoid missing keys, I first created locks for each bucket. I added calls to mutex_lock and mutex_unlock, with the corresponding bucket, in put() which is the critical section to avoid race. I initialized these locks in main using mutex_init.
+4. I did not put any locking in get() as there is no race condition in get(). I have put locking and unlocking before and after calling insert respectively to prevent the race condition. We don't need locking while checking if the key is already present. This because:
+    -Suppose one thread is reading table[i] and another is modifying table[i]. The fact that one thread is modifying table[i] implies the key doesn't already exist. If the two threads have different keys then checking if the key is already present is unaffected by the modification by the other thread. Suppose they have the same key value, then if table[i] is read before being modified then it will think the key doesn't exist and it will call insert essentially overturning the work done by the other thread. If it is read after modifying then it will just update the value. Either way, we get the same outcome.
+    -There is no problem if many threads read the value of table[i]
+    -At most one thread can modify table[i] due to the locks in put().
+Updating value also doesn't need locking.
+Therefore the position where I have used locking is optimal. 
+
+Problem 3
+1. Barriers are used when we require certain subtasks to be completed before proceeding to the next task. For example, one thread might need to use a variable set by another thread, in such a case we can use barriers to ensure the variable is set correctly before use. Suppose we are searching for a number in an array by splitting it into 5 parts and running on different threads and then comparing the output of the 5 subparts to find if it exists. In such a case we need to solve the 5 subtasks first before calculating if it exists and we can use a barrier for this.
+2. In barrier(), I lock and then increase the number of threads and go to sleep by calling wait. When the last process calls barrier(), it increments round, sets nthread to 0 and wakes all the sleeping processes. The locks are then unlocked. 
+bstate.round is maintained correctly as it is incremented only after the last thread calls barrier. All threads wait for the last thread, hence the barrier works. 
+The case in which one thread races around the loop before the others have exited the barrier is also handled. In particular, we are re-using bstate.nthread from one round to the next. A thread that leaves the barrier and races around the loop doesn't increase bstate.nthread while a previous round is still using it because the threads are woken up only once bstate.nthread is set to 0.
+
