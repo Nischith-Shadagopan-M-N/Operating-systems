@@ -1,0 +1,9 @@
+For the first part:
+-Wrote a C program to take an input and print it in the user space
+-modified the make file to include my new user program in the UPROG and EXTRA section
+-Cleared the make file output using make clean and executed make qemu and verified the program
+
+For the second part:
+-Added indicatory print statements to sysfile.c corresponding to mkdir present in the kernel folder
+-Cleared the make file output using make clean and executed make qemu
+-Created a new folder using mkdir and verified the changes
